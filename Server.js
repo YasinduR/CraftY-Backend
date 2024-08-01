@@ -78,8 +78,8 @@ app.post('/register', async (req, res) => {
 
 
 
-// Define a route to get all data from the collection
-app.get('/products', async (req, res) => {
+// Define a route to get all products
+app.get('/products', async (req, res) => {   
     try {
         const collection = db.collection(collectionName);
         const data = await collection.find({}).toArray();
@@ -89,17 +89,12 @@ app.get('/products', async (req, res) => {
     }
 });
 
-// Get specific
+// Get specific product Id through product menu
 app.get('/products/:id', async (req, res) => {
     try {
         const collection = db.collection(details);
         const productId = req.params.id;
-        
-        // Validate the ObjectId
-        //if (!ObjectId.isValid(productId)) {
-       ///     return res.status(400).send('Invalid ID format');
-        //}
-
+        const { username,email, password } = req.body
         const data = await collection.findOne({ "ref_id": productId });
 
         if (!data) {
@@ -112,6 +107,28 @@ app.get('/products/:id', async (req, res) => {
     }
 });
 
+// Get specific product detail througt providing ID in product>Details (used in cart)
+app.post('/products/detail_request', async (req, res) => {
+    try {
+        const collection = db.collection(details);
+        
+        const { productId } = req.body
+        const objectId = new ObjectId(productId);
+        const data = await collection.findOne({ "_id": objectId });
+        // Validate the ObjectId
+        //if (!ObjectId.isValid(productId)) {
+       ///     return res.status(400).send('Invalid ID format');
+        //}
+
+        if (!data) {
+            return res.status(404).send('Product not found');
+        }
+
+        res.json(data);
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+});
 
 
 
