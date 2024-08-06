@@ -111,15 +111,10 @@ app.get('/products/:id', async (req, res) => {
 app.post('/products/detail_request', async (req, res) => {
     try {
         const collection = db.collection(details);
-        
         const { productId } = req.body
         const objectId = new ObjectId(productId);
         const data = await collection.findOne({ "_id": objectId });
-        // Validate the ObjectId
-        //if (!ObjectId.isValid(productId)) {
-       ///     return res.status(400).send('Invalid ID format');
-        //}
-
+     
         if (!data) {
             return res.status(404).send('Product not found');
         }
@@ -130,6 +125,61 @@ app.post('/products/detail_request', async (req, res) => {
     }
 });
 
+
+
+
+
+
+
+
+app.post('/user/update_cart',async(req,res)=>{
+    try {
+        // Find the document and update a specific object in the array
+        const User = dbu.collection(dbUsersCollection);
+        const { email,objectId,quantity } = req.body; // user email object id and new count that has to appear on cart
+        const objectId_ = new ObjectId(objectId);// CONVERT IDstring to IDmongodb class
+
+        if(quantity<0){
+            res.json("Cart Error: Number of items can't be negative")
+        }
+        else if (quantity==0){ // REMOVE A CART ELEMENT FROM THE USER DOC
+            const result = await User.updateOne(
+                { "email": email},  // search user 
+                { $pull: { cart: { objectId: objectId_} } } // search cart item and pull the item out
+            );
+            res.json(result);
+        }
+        else if( quantity>0){
+            const result = await User.updateOne(
+                { "email": email, "cart.objectId": objectId_},  // search user and cart object to change
+                {$set: {"cart.$.count": quantity }}
+            );// Update the count of the matched object
+            res.json(result);
+        }
+        //const user = await User.findOne({ "email": email})
+       // const { password: userPassword, ...userWithoutPassword } = user; // seperate pwd
+        //res.json(userWithoutPassword); // for testing
+
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+
+})
+
+app.post('/user/add_to_cart',async(req,res)=>{
+    const User = dbu.collection(dbUsersCollection);
+    const { email,objectId} = req.body; // user email object id and new count that has to appear on cart
+    const objectId_ = new ObjectId(objectId);// CONVERT IDstring to IDmongodb class
+    const result = await User.updateOne(
+        { "email": email,"cart.objectId":{ $ne:objectId_}},  // search user and check whether the item cart object to change
+        {$addToSet: {cart:{ // addtoset => avoid duplications
+        "objectId": objectId_,
+        "count": 1 
+        }}}
+    );// Add to cart if the item not in the count of the matched object
+    res.json(result)
+});
 
 
 
