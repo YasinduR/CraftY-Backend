@@ -45,6 +45,7 @@ MongoClient.connect(uri)
 // Define a route to login
 app.post('/login', async (req, res) => {
     try {
+
         const User = dbu.collection(dbUsersCollection);
         const { email, password } = req.body;
         const user = await User.findOne({ "email": email})
@@ -52,7 +53,7 @@ app.post('/login', async (req, res) => {
         return res.status(400).json({ error: 'Invalid username or password' });
       }
       else{
-        const { password: userPassword, ...userWithoutPassword } = user; // seperate 
+        const { password: userPassword, ...userWithoutPassword } = user; // password will not be passed to front end
         res.json(userWithoutPassword);
       }
     } catch (error) {
@@ -65,17 +66,20 @@ app.post('/register', async (req, res) => {
     try {
         const User = dbu.collection(dbUsersCollection);
         const { username,email, password } = req.body;
-        const user = await User.insertOne({ "username":username,"email":email, "password":password });
-        return res.status(201).json(user);
+        const currentuser = await User.findOne({ "email": email }); // Find If the email has been already used
+        if (!currentuser){ // Create record only if the email
+            const user = await User.insertOne({ "username":username,"email":email, "password":password,"cart":[] });
+            res.json(user);
+        }
+        else{
+            // Email already exists error (HTTP 409 Conflict)
+            res.status(409).json({ error: 'User email has been already used' })
+        }
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+
 });
-
-
-
-
-
 
 
 // Define a route to get all products
@@ -114,23 +118,14 @@ app.post('/products/detail_request', async (req, res) => {
         const { productId } = req.body
         const objectId = new ObjectId(productId);
         const data = await collection.findOne({ "_id": objectId });
-     
         if (!data) {
             return res.status(404).send('Product not found');
         }
-
         res.json(data);
     } catch (error) {
         res.status(500).send(error.message);
     }
 });
-
-
-
-
-
-
-
 
 app.post('/user/update_cart',async(req,res)=>{
     try {
@@ -156,10 +151,6 @@ app.post('/user/update_cart',async(req,res)=>{
             );// Update the count of the matched object
             res.json(result);
         }
-        //const user = await User.findOne({ "email": email})
-       // const { password: userPassword, ...userWithoutPassword } = user; // seperate pwd
-        //res.json(userWithoutPassword); // for testing
-
     }
     catch (error) {
         res.status(500).json({ error: error.message });
@@ -180,9 +171,6 @@ app.post('/user/add_to_cart',async(req,res)=>{
     );// Add to cart if the item not in the count of the matched object
     res.json(result)
 });
-
-
-
 
 app.listen(port, () => {
     console.log(`Server is running on http://localhost:${port}`);
